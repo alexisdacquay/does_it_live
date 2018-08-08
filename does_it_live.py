@@ -4,63 +4,62 @@
 #    Written by: 
 #       Alexis Dacquay
 
-import optparse
+import argparse
 import time
 import os
 import signal
+import subprocess
+#from ctypes import cdll, byref, create_string_buffer
+import sys
+import signal
+
 #import syslog
 #import sys
 #import datetime
 #import socket
-import subprocess
 
 
+'''
 def setProcName(newname):
     # This function allow tracking this script by name from bash/kernel
     libc = cdll.LoadLibrary( 'libc.so.6' )
     buff = create_string_buffer( len( newname ) + 1 )
     buff.value = newname    
     libc.prctl( 15, byref( buff ), 0, 0, 0)
+'''
 
-def MyOptionParser():
-    usage = 'usage: %prog [options]'
-    op = optparse.OptionParser(usage=usage)
+def parseArgs():
+    parser = argparse.ArgumentParser(description='Checks whether a destination \
+                                                    is alive')
 
-    op.add_option( '-x', '--debug', dest='debug', action='store_true',
-                   help='print debug info' )
+    parser.add_argument('-x', '--debug', action='store_true',
+                        help='activates debug output')
     
-    op.add_option( '-i', '--interval', dest='interval', action='store',
-                   help='Interval of polls. Default is 5', type='int',
-                   default='5')
+    parser.add_argument('-i', '--interval', type=int, 
+                        default=5, help='Interval of polls. Default is 5')
     
-    op.add_option( '-m', '--mode', dest='mode', action='store_true',
-                   help='detection mode: ICMP, DNS, etc. Default is ICMP', type='string', 
-                   default='icmp')
+    parser.add_argument('-m', '--mode', default='icmp',
+                        help='detection mode: ICMP, DNS, etc. Default is ICMP')
     
-    op.add_option( '-d', '--destination', dest='dest', action='store',
-                   help='IP address of the destination to reach', type='string')
+    parser.add_argument('-s', '--source',
+                        help='source IP address to reach')
     
-    op.add_option( '-n', '--servername', dest='servername', action='store',
-                   help='FQDN of the server to check by DNS', type='string')
+    parser.add_argument('-d', '--dns',
+                        help='IP address of the DNS name-server, to be used in\
+                        conjunction with the DNS mode and a FQDN')
+    
+    parser.add_argument('host', nargs='+', 
+                        help='FQDN or IP address of the destination(s) to check')
 
-    op.add_option( '-s', '--source', dest='source', action='store',
-                   help='source IP address to reach', type='string')
+    args = parser.parse_args()
+    return args
 
-    op.add_option( '-S', '--dns', dest='dns', action='store',
-                   help='IP address of the DNS server, to be used in \
-                   conjunction with the DNS mode and a FQDN', type='string')
-
-    opts, _ = op.parse_args()
-    
-    debug = opts.debug
-    interval = opts.interval
-    mode  = opts.mode
-    dest = opts.dest
-    source = opts.source
 
 def main():
+    # Signal handling used to quit by Ctrl+C without tracekack
     signal.signal(signal.SIGINT, lambda sig_number, current_stack_frame: sys.exit(0))
-    setProcName( 'does_it_live' )
+    #setProcName( 'does_it_live' )
+    parseArgs()
 
 if __name__ == '__main__':
     main()
