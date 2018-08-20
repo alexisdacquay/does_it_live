@@ -19,9 +19,19 @@ import re
 #import datetime
 #from ctypes import cdll, byref, create_string_buffer
 
+def trace2( *msg ):
+    if args.debug:
+        if len(msg) > 1:
+            # If 2 strings were passed for trace print out
+            print ( '{:16} {}'.format( msg[ 0 ], msg[ 1 ] ) )
+        else:
+            # If only 1 message was passed to print
+            print ( msg[0] )
+
 def trace( msg ):
     if args.debug:
-        print ( msg )
+        print (msg)
+
 
 def parseArgs():
     parser = argparse.ArgumentParser( description='Checks whether a destination \
@@ -81,75 +91,34 @@ class checkICMP:
                         host = self.host )
         '''
         src_exists = True if args.source else False
-        trace( ' -------- source ---------' )
-        trace( src_exists )
-        trace( [ '-S ' + str( args.source ) ] * src_exists )
-        
-
-        '''
-        command = [ 'ping' ] + \
-                      [ '-c 1' ] + \
-                      [ '-t ' + str( args.timeout ) ] + \
-                      [ '-S ' + str( args.source ) ] * src_exists + \
-                      [ self.host ]
-        '''
-        '''        
-        try:
-    subprocess.check_output(...)
-except subprocess.CalledProcessError as e:
-    print e.output
-
-
-if e.output.startswith('error: {'):
-    error = json.loads(e.output[7:]) # Skip "error: "
-    print error['code']
-    print error['message']
-
-        try:
-            result =    subprocess.run( command, capture_output = True )
-        except Error:
-            print( '--------======--------' )
-            print( Error )
-        '''
-        
         command = [ 'ping' ] + \
                   [ '-c 1' ] + \
                   [ '-t ' + str( args.timeout ) ] + \
                   [ '-S ' + str( args.source ) ] * src_exists + \
                   [ self.host ]
-        print (command)
+        trace( '{:16} {}'.format( 'The command is:', str( command ) ) )
         result = subprocess.run( command, capture_output = True )
-        trace( ' -------- result ---------' )
-        print (result)
-        trace( ' -------- result.returncode ---------' )
-        print (result.returncode)
-
-        #result = subprocess.run( [ 'ping', '-c 1', 't 1', self.host ], capture_output=True)
-        
-        trace( ' -------- result ---------' )
-        trace( result )
-        trace( ' -------- result.stdout ---------' )
-        trace( result.stdout )
-        trace( ' -------- result.stdout.decode ---------' )
-        output = result.stdout.decode( 'ascii' )
-        #trace( output )
-        trace (result.returncode)
-        if result.returncode != 0:
-            print( result.stderr.decode( 'ascii' ) )
         if result.returncode == 0:
-            #output = result.stdout.decode( 'ascii' )
-            #trace( output )
+            output = result.stdout.decode( 'ascii' )
+            trace( '{:16} {}'.format( 'The output is:', output ) )
             pattern = r'time=(.*?) ms\n'
-            latency = re.findall( pattern, output)[0]
-        #print ( result )
+            latency = re.findall( pattern, output )[ 0 ]
+            trace( '{:16} {}'.format( 'The Latency is:', latency ) )
+        else:
+            # if result.returncode != 0 it means an error occured
+            error = result.stderr.decode( 'ascii' )
+            trace( '{:16} {}'.format( 'Error:', error ) )
+        return ( result )
 
 def main():
     global args
     # Signal handling used to quit by Ctrl+C without tracekack
-    signal.signal(signal.SIGINT, lambda sig_number, current_stack_frame: sys.exit( 0 ))
+    signal.signal( signal.SIGINT, lambda sig_number, current_stack_frame: sys.exit( 0 ) )
     args = parseArgs()
-    trace( "args are: {}".format( args ) )
-    check = checkICMP( args.host[0] )
+    trace( 'args are: {}'.format( args ) )
+    trace2 ( '111111', '222222')
+    trace2 ( '333333')
+    check = checkICMP( args.host[ 0 ] )
     check.isAlive()
 
 if __name__ == '__main__':
