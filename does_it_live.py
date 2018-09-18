@@ -23,7 +23,7 @@ def trace( *msg ):
     if args.debug:
         if len(msg) > 1:
             # If 2 strings were passed for trace print out
-            print ( '{:16} {}'.format( msg[ 0 ], msg[ 1 ] ) )
+            print ( '{:20} {}'.format( msg[ 0 ], msg[ 1 ] ) )
         else:
             # If only 1 message was passed to print
             print ( msg[0] )
@@ -83,21 +83,20 @@ class checkICMP:
         # Must get an output first, check with isAlive()
         outputLines = output.split('\n')
         lastNonEmpty = [ i for i in outputLines if i ][ -1 ]
-        trace( 'The ping results is:', lastNonEmpty)
+        trace( 'Ping result:', lastNonEmpty)
         timingData = lastNonEmpty.split( '=' )[1]
         timingStats = timingData.split( '/' )
-        trace( 'The time stats are:', timingStats )
 
-        pingMin = float( timingStats[ 0 ] )
+        #pingMin = float( timingStats[ 0 ] )
         pingAvg = float( timingStats[ 1 ] )
-        pingMax = float( timingStats[ 2 ] )
+        #pingMax = float( timingStats[ 2 ] )
         
         return pingAvg
 
     def isAlive( self ):
         result = ''
         pythonVersion = sys.version_info[ 0 ]
-        trace( 'The Python version is:', pythonVersion )
+        trace( 'Python version:', pythonVersion )
 
         src_exists = True if args.source else False
         command = [ 'ping' ] + \
@@ -109,33 +108,33 @@ class checkICMP:
 
         # Python 2 compatibility
         if sys.version_info[ 0 ] < 3:
-            #limbo = open( os.devnull, "wb" )
             proc = subprocess.Popen( [ 'ping', '-n', '-c3', '-W1', self.host ], \
-            #stdout = limbo, stderr = limbo )
             stdout = subprocess.PIPE, stderr = subprocess.PIPE )
-            #trace( 'The STDOUT is:', str( proc.stdout ) )
             returncode = proc.wait()
             if returncode == 0:
                 rawOutput = proc.communicate()
                 output = rawOutput[0].decode( 'ascii' )
                 trace( 'The latency is:', self.getLatency( output ) )
+                result = True
             else:
-                error = 'Undefined error'
+                error = 'The ICMP check did not succeed'
                 trace( 'Error:', error )
+                result = False
 
         # Python 3
         if sys.version_info[ 0 ] >= 3:
-            result = subprocess.run( command, capture_output = True )
+            proc = subprocess.run( command, capture_output = True )
  
-            if result.returncode == 0:
-                output = result.stdout.decode( 'ascii' )
-                trace( 'The output is:', output )
-                trace( 'The latency is:', self.getLatency( str( output ) ) )
+            if proc.returncode == 0:
+                output = proc.stdout.decode( 'ascii' )
+                trace( 'The latency is:', self.getLatency( output ) )
+                result = True
             else:
-                # if result.returncode != 0 it means an error occured
-                error = result.stderr.decode( 'ascii' )
+                # if proc.returncode != 0 it means an error occured
+                error = proc.stderr.decode( 'ascii' )
                 trace( 'Error:', error )
-        return ( result )
+                result = False
+        return result
 
 def main():
     global args
@@ -144,7 +143,10 @@ def main():
     args = parseArgs()
     trace( 'Args are:', args )
     check = checkICMP( args.host[ 0 ] )
-    check.isAlive()
+    while True:
+        if check.isAlive():
+            print( "Target is alive" )
+        time.sleep( XXX )
 
 if __name__ == '__main__':
     main()
