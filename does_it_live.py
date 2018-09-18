@@ -19,7 +19,7 @@ import re
 #import datetime
 #from ctypes import cdll, byref, create_string_buffer
 
-def trace2( *msg ):
+def trace( *msg ):
     if args.debug:
         if len(msg) > 1:
             # If 2 strings were passed for trace print out
@@ -27,10 +27,6 @@ def trace2( *msg ):
         else:
             # If only 1 message was passed to print
             print ( msg[0] )
-
-def trace( msg ):
-    if args.debug:
-        print (msg)
 
 
 def parseArgs():
@@ -83,31 +79,62 @@ class checkICMP:
     def __init__( self, host ):
         self.host = host
 
+    def getLatency( self, output ):
+        # Must get an output first, check with isAlive()
+        outputLines = output.split('\n')
+        lastNonEmpty = [ i for i in outputLines if i ][ -1 ]
+        trace( 'The ping results is:', lastNonEmpty)
+        timingData = lastNonEmpty.split( '=' )[1]
+        timingStats = timingData.split( '/' )
+        trace( 'The time stats are:', timingStats )
+
+        pingMin = float( timingStats[ 0 ] )
+        pingAvg = float( timingStats[ 1 ] )
+        pingMax = float( timingStats[ 2 ] )
+        
+        return pingAvg
+
     def isAlive( self ):
-        '''
-        ping_str = 'ping -c 1 -t {timeout} {src} {host}'
-        ping_str.format( timeout = args.timeout,
-                        src = '-S' + args.source if args.source else '',
-                        host = self.host )
-        '''
+        result = ''
+        pythonVersion = sys.version_info[ 0 ]
+        trace( 'The Python version is:', pythonVersion )
+
         src_exists = True if args.source else False
         command = [ 'ping' ] + \
                   [ '-c 1' ] + \
                   [ '-t ' + str( args.timeout ) ] + \
                   [ '-S ' + str( args.source ) ] * src_exists + \
                   [ self.host ]
-        trace( '{:16} {}'.format( 'The command is:', str( command ) ) )
-        result = subprocess.run( command, capture_output = True )
-        if result.returncode == 0:
-            output = result.stdout.decode( 'ascii' )
-            trace( '{:16} {}'.format( 'The output is:', output ) )
-            pattern = r'time=(.*?) ms\n'
-            latency = re.findall( pattern, output )[ 0 ]
-            trace( '{:16} {}'.format( 'The Latency is:', latency ) )
-        else:
-            # if result.returncode != 0 it means an error occured
-            error = result.stderr.decode( 'ascii' )
-            trace( '{:16} {}'.format( 'Error:', error ) )
+        trace( 'The command is:', str( command ) )
+
+        # Python 2 compatibility
+        if sys.version_info[ 0 ] < 3:
+            #limbo = open( os.devnull, "wb" )
+            proc = subprocess.Popen( [ 'ping', '-n', '-c3', '-W1', self.host ], \
+            #stdout = limbo, stderr = limbo )
+            stdout = subprocess.PIPE, stderr = subprocess.PIPE )
+            #trace( 'The STDOUT is:', str( proc.stdout ) )
+            returncode = proc.wait()
+            if returncode == 0:
+                rawOutput = proc.communicate()
+                output = rawOutput[0].decode( 'ascii' )
+                trace( 'The latency is:', self.getLatency( output ) )
+            else:
+                error = 'Undefined error'
+                trace( 'Error:', error )
+
+        # Python 3
+        if sys.version_info[ 0 ] >= 3:
+            result = subprocess.run( command, capture_output = True )
+ 
+            if result.returncode == 0:
+                output = result.stdout.decode( 'ascii' )
+                trace( 'The output is:', output )
+                trace( 'The latency is:', self.getLatency( str( output ) ) )
+            else:
+                # if result.returncode != 0 it means an error occured
+                error = result.stderr.decode( 'ascii' )
+                trace( 'Error:', error )
         return ( result )
 
 def main():
@@ -115,9 +142,7 @@ def main():
     # Signal handling used to quit by Ctrl+C without tracekack
     signal.signal( signal.SIGINT, lambda sig_number, current_stack_frame: sys.exit( 0 ) )
     args = parseArgs()
-    trace( 'args are: {}'.format( args ) )
-    trace2 ( '111111', '222222')
-    trace2 ( '333333')
+    trace( 'Args are:', args )
     check = checkICMP( args.host[ 0 ] )
     check.isAlive()
 
