@@ -9,8 +9,8 @@
 #       or http://www.dnspython.org/ + sudo python setup.py install
 '''
 Examples:
-./does_it_livepy -v -t 1 -i 1 8.8.8.8
-./does_it_live_v0.14.py -t 1 -i 1 -m dns -d 1.1.1.1 -s 10.0.2.15 www.bbc.co.uk
+./does_it_live.py -v -t 1 -i 1 8.8.8.8
+./does_it_live.py -t 1 -i 1 -m dns -d 1.1.1.1 -s 10.0.2.15 www.bbc.co.uk
     
 '''
 
