@@ -32,6 +32,8 @@ import time
 
 # logStr is a formatting pattern used by str.format() to align outputs
 logStr = '{:27} {}'
+# syslogFormat can be customised to match syslog preference
+syslogFormat = '%DOES_IT_LIVE-5-LOG'
 
 def setLogging(args):
     logLevel = logging.ERROR
@@ -108,7 +110,7 @@ def argsDisplay(args):
     # For debug purpose or curiosity
 
     logging.info('')
-    logging.info('########## Your settings1: ##########')
+    logging.info('########### Your settings: ###########')
     logging.debug(logStr.format('Args are:', args))
     logging.info(logStr.format('Verbose:', args.verbose))
     logging.info(logStr.format('VeryVerbose:', args.veryverbose))
@@ -119,25 +121,9 @@ def argsDisplay(args):
     logging.info(logStr.format('DNS server:', args.dns))
     logging.info(logStr.format('Consecutive times:', args.consecutive))
     logging.info(logStr.format('Target Host:', args.host))
-    logging.info('####################################')
+    logging.info('#######################################')
     logging.info('')
-    
-    '''
-    trace('')
-    trace('########## Your settings: ##########')
-    trace2('Args are:', args)
-    trace('Verbose:', args.verbose)
-    trace('VeryVerbose:', args.veryverbose)
-    trace('Interval:', args.interval)
-    trace('Timeout:', args.timeout)
-    trace('Mode:', args.mode)
-    trace('Source IP:', args.source)
-    trace('DNS server:', args.dns)
-    trace('Consecutive times:', args.consecutive)
-    trace('Target Host:', args.host)
-    trace('####################################')
-    trace('')
-    '''
+
 
 def checkOS():
     # Different OS have diferring PING options. This fuction standardises
@@ -210,15 +196,15 @@ class CheckDNS:
                                      source=self.source)
         except dns.resolver.NoAnswer:
             #trace('Error:', 'No response to the DNS query')
-            logging.error(logStr.format('No response to the DNS query'))
+            logging.error('No response to the DNS query')
             pass
         except dns.resolver.NXDOMAIN:
             #trace('Error:', 'DNS query name does no exist')
-            logging.error(logStr.format('DNS query name does no exist'))
+            logging.error('DNS query name does no exist')
             pass
         except dns.exception.Timeout:
             #trace('Error:', 'The DNS query timed out')
-            logging.error(logStr.format('The DNS query timed out'))
+            logging.error('The DNS query timed out')
             pass
         # Debugging - list all the IP addresses resolved
         for result in results:
@@ -313,10 +299,7 @@ class Notice():
     def syslog(self, msg):
         name = 'does_it_live'
         syslog.openlog(name, 0, syslog.LOG_LOCAL4)
-        '''
-        !!!! ToDo !!!!: make the string editable
-        '''
-        syslog.syslog('%%CHECK-6-LOG: Log msg: %s' % msg)
+        syslog.syslog(syslogFormat + ': Log msg: %s' % msg)
         # syslog.syslog(syslog.LOG_NOTICE, msg)
         # syslog.syslog(syslog.LOG_NOTICE|syslog.LOG_DAEMON, msg)
 
@@ -324,6 +307,7 @@ class Notice():
 def main():
     global args
     consecutive = 0
+    wasAlive = True
 
     # Signal handling used to quit by Ctrl+C without tracekack
     signal.signal(signal.SIGINT, lambda sig_number,
@@ -346,20 +330,27 @@ def main():
         if alive:
             logging.info(logStr.format('Target alive. Response:', response))
             ##trace('Target alive. The response is:', response)
-            if consecutive >= args.consecutive:
+            if not wasAlive:
+            #if consecutive >= args.consecutive:
                 # Resurected (was dead, is now back to life)
+                wasAlive = True
+                logging.info('Target resurected!')
                 send.syslog('Target {} is back to life - {} check'.format(
                             args.host[0], args.mode))
             # reinitialise the consecutivity counter
             consecutive = 0
         else:
+            # Only after consecutives timouts would a target be considered dead
             consecutive += 1
-            if consecutive >= args.consecutive:
-                # ToDo: do not repeat "dead", only once. RFE01
+            if wasAlive and (consecutive >= args.consecutive):
                 logging.error(logStr.format('Warning:', 'Target is dead'))
-                ##trace('Error:', 'Target is dead')
                 send.syslog('Target {} is dead - {} check'.format(
                             args.host[0], args.mode))
+                # Death tracker. 
+                wasAlive = False
+            else:
+                # Either the target is already dead or we haven't reached the consecutive count
+                pass
         logging.debug('')
         time.sleep(args.interval)
 
