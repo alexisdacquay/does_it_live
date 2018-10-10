@@ -128,8 +128,10 @@ def argsDisplay(args):
 def checkOS():
     # Different OS have diferring PING options. This fuction standardises
     os = platform.system()
-    global timeUnit
-    global sourceSetting
+    timeUnit = 1
+    sourceSetting = '-I'
+    #global timeUnit
+    #global sourceSetting
     if os == 'Linux':
         # On EOS Linux kernel timeout is in second and IP source as '-I'
         timeUnit = 1
@@ -141,9 +143,11 @@ def checkOS():
     elif os == 'Windows':
         # on Windows, timout is in msec, IP source as '-S'
         # too many other varation to support at this time
-        print('Error - Windows is not supported at this time')
+        logging.error('Error - Windows is not supported at this time')
     else:
-        print('Error - Unsupported OS')
+        logging.error('Error - Unsupported OS')
+    return (timeUnit, sourceSetting)
+    
 
 '''
 # For potential SSH connectivity testing
@@ -215,8 +219,10 @@ class CheckDNS:
 
 class checkICMP:
     # Verifies a reachability by ICMP and records the response latency
-    def __init__(self, host):
+    def __init__(self, timeUnit, sourceSetting, host):
         self.host = host
+        self.timeUnit = timeUnit
+        self.sourceSetting = sourceSetting
 
     def getLatency(self, output):
         # Must get an output first, check with isAlive()
@@ -242,11 +248,10 @@ class checkICMP:
         command = ['ping'] + \
                   ['-n'] + \
                   ['-c 1'] + \
-                  ['-W ' + str(args.timeout * timeUnit)] + \
-                  [sourceSetting + str(args.source)] * src_exists + \
+                  ['-W ' + str(args.timeout * self.timeUnit)] + \
+                  [self.sourceSetting + str(args.source)] * src_exists + \
                   [self.host]
         logging.debug(logStr.format('The command is:', str(command)))
-        #trace2('The command is:', str(command))
 
         # Python 2 compatibility
         if sys.version_info[0] < 3:
@@ -261,7 +266,6 @@ class checkICMP:
             else:
                 error = 'The ICMP check did not succeed'
                 logging.error(error)
-                #trace('Error:', error)
                 result = False
 
         # Python 3
@@ -310,49 +314,56 @@ def main():
     wasAlive = True
 
     # Signal handling used to quit by Ctrl+C without tracekack
+    '''
     signal.signal(signal.SIGINT, lambda sig_number,
                   current_stack_frame: sys.exit(0))
+    '''
     args = parseArgs()
     setLogging(args)
     argsDisplay(args)
-    checkOS()
+    timeUnit, sourceSetting = checkOS()
 
-    while True:
-        if args.mode == 'icmp':
-            check = checkICMP(args.host[0])
-        if args.mode == 'dns':
-            check = CheckDNS(args.dns, args.source, args.host[0])
-        alive, response = check.isAlive()
-        # 'alive' is a boolean
-        # 'reponse' can vary: either ICMP latency or IP address (DNS)
+    try:
+        while True:
+            if args.mode == 'icmp':
+                check = checkICMP(timeUnit, sourceSetting, args.host[0])
+            if args.mode == 'dns':
+                check = CheckDNS(args.dns, args.source, args.host[0])
+            alive, response = check.isAlive()
+            # 'alive' is a boolean
+            # 'reponse' can vary: either ICMP latency or IP address (DNS)
 
-        send = Notice()
-        if alive:
-            logging.info(logStr.format('Target alive. Response:', response))
-            ##trace('Target alive. The response is:', response)
-            if not wasAlive:
-            #if consecutive >= args.consecutive:
-                # Resurected (was dead, is now back to life)
-                wasAlive = True
-                logging.info('Target resurected!')
-                send.syslog('Target {} is back to life - {} check'.format(
-                            args.host[0], args.mode))
-            # reinitialise the consecutivity counter
-            consecutive = 0
-        else:
-            # Only after consecutives timouts would a target be considered dead
-            consecutive += 1
-            if wasAlive and (consecutive >= args.consecutive):
-                logging.error(logStr.format('Warning:', 'Target is dead'))
-                send.syslog('Target {} is dead - {} check'.format(
-                            args.host[0], args.mode))
-                # Death tracker. 
-                wasAlive = False
+            send = Notice()
+            if alive:
+                logging.info(logStr.format('Target alive. Response:', response))
+                ##trace('Target alive. The response is:', response)
+                if not wasAlive:
+                #if consecutive >= args.consecutive:
+                    # Resurected (was dead, is now back to life)
+                    wasAlive = True
+                    logging.info('Target resurected!')
+                    send.syslog('Target {} is back to life - {} check'.format(
+                                args.host[0], args.mode))
+                # reinitialise the consecutivity counter
+                consecutive = 0
             else:
-                # Either the target is already dead or we haven't reached the consecutive count
-                pass
-        logging.debug('')
-        time.sleep(args.interval)
+                # Only after consecutives timeouts would a target be considered dead
+                consecutive += 1
+                if wasAlive and (consecutive >= args.consecutive):
+                    logging.error(logStr.format('Warning:', 'Target is dead'))
+                    send.syslog('Target {} is dead - {} check'.format(
+                                args.host[0], args.mode))
+                    # Death tracker. 
+                    wasAlive = False
+                else:
+                    # Either the target is already dead or we haven't reached the
+                    # consecutive count yet; no action.
+                    pass
+            logging.debug('')
+            time.sleep(args.interval)
+    except KeyboardInterrupt:
+        print('Interrupted! Exiting...')
+        #break
 
 
 if __name__ == '__main__':
