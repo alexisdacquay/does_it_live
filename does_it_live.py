@@ -1,24 +1,154 @@
 #!/usr/bin/env python
 #
-#    Version 1.0 2018-09-27
+#    Version 1.0 2018-10-15
 #    Written by:
 #       Alexis Dacquay, ad@arista.com
 #
 '''
+ # Introduction #
+ 
+ This script verifies the reachability to a target by ICMP or DNS
+ The script is intended to be installed on a switch (or host).
 
- ### Installation: ###
+ # Requirements
+
+ This script was developped on Linux and Arista EOS 4.21.
+ Both python2 and python3 were tested on Linux
+ DNS python is required
+
+
+ # Instructions #
+
+ ## 1 - Get the script on the host
+ https://github.com/alexisdacquay/does_it_live
+
+ ## 2 - Instal DNSPython
+ ### Online
+ If the switch/host has got a public access:
  pip install dnspython
- or http://www.dnspython.org/ + sudo python setup.py install
 
- ### Usage examples: ###
+ ### Offline
+ or download the package at http://www.dnspython.org/ and then 
+ "sudo python setup.py install"
+
+
+ ## 3 - Syntax
+
+ ./does_it_live.py  [-h] [-v] [-V] [-i <time>] [-t <time>] 
+                    [-m icmp | dns [-d <dns ip>]] [-s <ip add>]
+                    [-D <count>] host
+
+ -v (--verbose) aims at providing basic information to verify the functionality
+                of the script. Someone would typically use this option before
+                Leaving it to run silently
+
+ -V (--veryVerbose) would be used for troubleshooting the software developement
+                or the operation of the script
+
+ -i (--interval) time in seconds between each health check
+
+ -t (--timeout) time in seconds before declaring a single health check as 
+                failed
+
+ -m (--mode)    operating mode of the health check. ICMP and DNS are 
+                supported. If running in ICMP mode, which is the default, then 
+                only the host is required. When using DNS mode, then the DNS 
+                server is additionally required.
+
+ -s (--source)  the source IP address of the IP query can be specified
+
+ -D (--dampening) amount of consecutive checks before switching the target from
+                one state to another, either alive->dead or dead->alive. 
+                The dampening count applies for both direction of change.
+                The default dampening count is 3. In example of a default count 
+                (-D3), if a target is alive and get a single check failure, the 
+                target will not be declared dead yet. It will take
+                3 consecutive checks to fail before switch the target to 
+                'dead'. If after 1 or 2 failures the target becomes responsive 
+                again then the dampening is reset, meaning the 1 or 2 failures 
+                are ignored and 3 entirely new failures will be needed to 
+                change the target status.
+
+
+Dampening example - target is considered still alive:
+    Success Success Fail Success Fail Fail Success
+                                                 ^ 
+                                                 Never 'died' yet
+
+Dampening example - target becomes considered as dead:
+    Success Fail Fail Fail Success Fail Success Success Fail
+                          ^                                 ^
+                          Declared dead                      Still dead
+                
+Dampening example - target recovers from dead to alive (resurects):
+    Success Fail Fail Fail Success Fail Success Success Success
+                                                              ^ target is back alive 
+
+
+ ## 4 - Usage examples:
+
+ ### Example 1 - ICMP
+ The following tries an ICMP reach to 8.8.8.8 every seconds and shows basic ouput
  ./does_it_live.py -v -t 1 -i 1 8.8.8.8
- ./does_it_live.py -t 1 -i 1 -m dns -d 1.1.1.1 -s 10.0.2.15 www.bbc.co.uk
- ./does_it_live.py -t 1 -i 1 -m dns -d 8.8.8.8 www.bbccc.co.uk
+
+Logs on the Arista switch:
+Oct 12 08:48:29 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target 1.1.1.1 is dead - icmp check
+Oct 12 08:48:49 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target 1.1.1.1 is back to life - icmp check
+
+Script output:
+[vagrant@localhost scripts]$ ./does_it_live_v0.22.py -v -t1 -i1  1.1.1.1
+INFO
+INFO     ########### Your settings: ###########
+INFO     Verbose:                    True
+INFO     VeryVerbose:                False
+INFO     Interval:                   1
+INFO     Timeout:                    1
+INFO     Mode:                       icmp
+INFO     Source IP:                  None
+INFO     DNS server:                 None
+INFO     Dampening amount:           3
+INFO     Target Host:                ['1.1.1.1']
+INFO     #######################################
+INFO
+INFO     Target alive. Response:     6.105 ms
+INFO     Target alive. Response:     6.797 ms
+INFO     The ICMP check did not succeed
+INFO     The ICMP check did not succeed
+INFO     The ICMP check did not succeed
+ERROR    Warning:                    Target is dead    <=== host reclared dead
+INFO     The ICMP check did not succeed
+INFO     Target alive. Response:     7.157 ms
+INFO     Dampening in progress
+INFO     Target alive. Response:     144.862 ms
+INFO     Dampening in progress
+INFO     The ICMP check did not succeed  <=== Dampening prevented recovery
+INFO     The ICMP check did not succeed
+INFO     The ICMP check did not succeed
+INFO     Target alive. Response:     8.201 ms
+INFO     Dampening in progress
+INFO     Target alive. Response:     5.272 ms
+INFO     Dampening in progress
+INFO     Target alive. Response:     42.607 ms
+INFO     Dampening in progress
+INFO     Target alive. Response:     5.250 ms
+ERROR    Target resurected!      <=== After dampening 3x the target has recovered
+
+
+### Example 2 - DNS
+
+ The following tests resolving www.bbc.co.uk agains the DNS server 1.1.1.1
+
+[vagrant@localhost scripts]$ ./does_it_live.py -t1 -i1 -m dns -d 1.1.1.1 -s 10.0.2.15 www.w3.org
+ERROR    Warning:                    Target is dead
+ERROR    Target resurected!
+
+Logs on the Arista switch:
+Oct 12 08:52:40 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target www.w3.org is dead - dns check
+Oct 12 08:52:50 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target www.w3.org is back to life - dns check
 
 '''
 
 import argparse
-import dns.resolver
 import logging
 import os
 import platform
@@ -29,13 +159,17 @@ import subprocess
 import sys
 import syslog
 import time
+# dns.resolver requires installing DNSPython (see install instructions)
+import dns.resolver
 
+# Global configuration settings
 # logStr is a formatting pattern used by str.format() to align outputs
 logStr = '{:27} {}'
 # syslogFormat can be customised to match syslog preference
 syslogFormat = '%DOES_IT_LIVE-5-LOG'
 
 def setLogging(args):
+    # The log level sets the amount of information displayed (error<info<debug)
     logLevel = logging.ERROR
     if args.verbose:
         logLevel = logging.INFO
@@ -43,30 +177,11 @@ def setLogging(args):
         logLevel = logging.DEBUG
     logging.basicConfig(level=logLevel,
                         format='%(levelname)-8s %(message)s')
-    
-def trace2(*msg):
-    # presents messages similarly to 'trace()' but the existence of trace2
-    # allows granularity in the debug level. This is aimed at debugging
-    if args.veryverbose:
-        trace(*msg)
-
-
-def trace(*msg):
-    # presents outputs in a formatted manner. Supports 1 or 2 strings
-    # This is aimed at being informational
-    if args.verbose:
-        if len(msg) > 1:
-            # If 2 strings were passed for trace print out
-            #print('{:20} {}'.format(msg[0], msg[1]))
-            pass
-        else:
-            # If only 1 message was passed to print
-            print(msg[0])
 
 
 def parseArgs():
-    parser = argparse.ArgumentParser(description='Checks whether a destination \
-                                                    is alive')
+    parser = argparse.ArgumentParser(
+        description='Checks whether a destination is alive')
 
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='activates verbose output')
@@ -91,9 +206,9 @@ def parseArgs():
                         help='IP address of the DNS name-server, to be used in\
                                 conjunction with the DNS mode and a FQDN')
 
-    parser.add_argument('-c', '--consecutive', type=int, default=3,
-                        help='Amount consecutive times a target must be failing\
-                                before being considered dead')
+    parser.add_argument('-D', '--dampening', type=int, default=3,
+                        help='Dampening amount of fail/success for target to\
+                                be considered switching status')
 
     parser.add_argument('host', nargs='+',
                         help='FQDN or IP address of the destination(s) to \
@@ -108,7 +223,6 @@ def parseArgs():
 
 def argsDisplay(args):
     # For debug purpose or curiosity
-
     logging.info('')
     logging.info('########### Your settings: ###########')
     logging.debug(logStr.format('Args are:', args))
@@ -119,7 +233,7 @@ def argsDisplay(args):
     logging.info(logStr.format('Mode:', args.mode))
     logging.info(logStr.format('Source IP:', args.source))
     logging.info(logStr.format('DNS server:', args.dns))
-    logging.info(logStr.format('Consecutive times:', args.consecutive))
+    logging.info(logStr.format('Dampening amount:', args.dampening))
     logging.info(logStr.format('Target Host:', args.host))
     logging.info('#######################################')
     logging.info('')
@@ -128,10 +242,9 @@ def argsDisplay(args):
 def checkOS():
     # Different OS have diferring PING options. This fuction standardises
     os = platform.system()
+    osSettings = {}
     timeUnit = 1
     sourceSetting = '-I'
-    #global timeUnit
-    #global sourceSetting
     if os == 'Linux':
         # On EOS Linux kernel timeout is in second and IP source as '-I'
         timeUnit = 1
@@ -146,7 +259,9 @@ def checkOS():
         logging.error('Error - Windows is not supported at this time')
     else:
         logging.error('Error - Unsupported OS')
-    return (timeUnit, sourceSetting)
+    osSettings['timeUnit'] = timeUnit
+    osSettings['sourceSetting'] = sourceSetting
+    return osSettings
     
 
 '''
@@ -156,10 +271,10 @@ def checkSocket(ip, port, timeout):
     s.settimeout(timeout)
     try:
         s.connect((ip, port))
-        trace("{} - Port {} is reachable".format(ip, port))
+        logging.error("{} - Port {} is reachable".format(ip, port))
         test_success = True
     except socket.error as e:
-        trace("Error on connect: {}".format(e))
+        logging.error("Error on connect: {}".format(e))
         test_success = False
     s.settimeout(None)
     #fileobj = s.makefile('rb', 0)
@@ -169,7 +284,7 @@ def checkSocket(ip, port, timeout):
 
 
 class CheckDNS:
-    # Verify that a FQDN resolves via a specified DNS server, returns the IP
+    # Verify that a host resolves via a specified DNS server, returns the IP
     def __init__(self, dnsServer, source, target):
         self.dnsServer = dnsServer
         self.source = source
@@ -195,41 +310,36 @@ class CheckDNS:
         resolver.lifetime = args.timeout
         try:
             logging.debug(logStr.format('Info:', 'DNS query attempt'))
-            #trace2('Info:', 'DNS query attempt')
             results = resolver.query(self.target, queryType,
                                      source=self.source)
         except dns.resolver.NoAnswer:
-            #trace('Error:', 'No response to the DNS query')
-            logging.error('No response to the DNS query')
+            logging.info('No response to the DNS query')
             pass
         except dns.resolver.NXDOMAIN:
-            #trace('Error:', 'DNS query name does no exist')
-            logging.error('DNS query name does no exist')
+            logging.info('DNS query name does no exist')
             pass
         except dns.exception.Timeout:
-            #trace('Error:', 'The DNS query timed out')
-            logging.error('The DNS query timed out')
+            logging.info('The DNS query timed out')
             pass
-        # Debugging - list all the IP addresses resolved
         for result in results:
+            # Debugging - list all the IP addresses resolved
             logging.debug(logStr.format('Result DNS IP address:', result.address))
-            #trace2('Result DNS IP address:', result.address)
         return results
 
 
 class checkICMP:
     # Verifies a reachability by ICMP and records the response latency
-    def __init__(self, timeUnit, sourceSetting, host):
+    def __init__(self, osSettings, host):
+        
+        self.timeUnit = osSettings['timeUnit']
+        self.sourceSetting = osSettings['sourceSetting']
         self.host = host
-        self.timeUnit = timeUnit
-        self.sourceSetting = sourceSetting
 
     def getLatency(self, output):
-        # Must get an output first, check with isAlive()
+        # Must first get an output to parse, used after/with isAlive()
         outputLines = output.split('\n')
         lastNonEmpty = [i for i in outputLines if i][-1]
         logging.debug(logStr.format('Ping result:', lastNonEmpty))
-        #trace2('Ping result:', lastNonEmpty)
         timingData = lastNonEmpty.split('=')[1]
         timingStats = timingData.split('/')
         pingAvg = timingStats[1]
@@ -241,8 +351,6 @@ class checkICMP:
         latency = 0
         pythonVersion = sys.version_info[0]
         logging.debug(logStr.format('Python version:', pythonVersion))
-        #trace2('Python version:', pythonVersion)
-        
 
         src_exists = True if args.source else False
         command = ['ping'] + \
@@ -253,7 +361,7 @@ class checkICMP:
                   [self.host]
         logging.debug(logStr.format('The command is:', str(command)))
 
-        # Python 2 compatibility
+        # Python 2 compatibility for running on EOS
         if sys.version_info[0] < 3:
             proc = subprocess.Popen(command,
                                     stdout=subprocess.PIPE,
@@ -265,7 +373,7 @@ class checkICMP:
                 result = True
             else:
                 error = 'The ICMP check did not succeed'
-                logging.error(error)
+                logging.info(error)
                 result = False
 
         # Python 3
@@ -275,18 +383,16 @@ class checkICMP:
                 output = proc.stdout.decode('ascii')
                 result = True
             else:
-                # if proc.returncode != 0 it means an error occured
-                # get a clean line for the error message
+                # If proc.returncode != 0 it means an error occured.
+                # We get a clean line for the error message
                 error = proc.stderr.decode('ascii').split('\n')[0]
                 if error == '':
                     error = 'The ICMP check did not succeed'
-                logging.error(error)
-                #trace('Error:', error)
+                logging.info(error)
                 result = False
         
         if output:
             logging.debug(logStr.format('The output is:', output))
-            #trace2('The output is:', output)
             latency = self.getLatency(output)
         return result, latency
 
@@ -304,66 +410,71 @@ class Notice():
         name = 'does_it_live'
         syslog.openlog(name, 0, syslog.LOG_LOCAL4)
         syslog.syslog(syslogFormat + ': Log msg: %s' % msg)
-        # syslog.syslog(syslog.LOG_NOTICE, msg)
-        # syslog.syslog(syslog.LOG_NOTICE|syslog.LOG_DAEMON, msg)
 
 
 def main():
     global args
-    consecutive = 0
+    dampeningDead = 0
+    dampeningAlive = 0
     wasAlive = True
-
-    # Signal handling used to quit by Ctrl+C without tracekack
-    '''
-    signal.signal(signal.SIGINT, lambda sig_number,
-                  current_stack_frame: sys.exit(0))
-    '''
+    
     args = parseArgs()
     setLogging(args)
     argsDisplay(args)
-    timeUnit, sourceSetting = checkOS()
+    osSettings = checkOS()
 
     try:
         while True:
             if args.mode == 'icmp':
-                check = checkICMP(timeUnit, sourceSetting, args.host[0])
+                check = checkICMP(osSettings, args.host[0])
             if args.mode == 'dns':
                 check = CheckDNS(args.dns, args.source, args.host[0])
+            
+            # Check alive (True/False) and response (ICMP latency or DNS IP@)
             alive, response = check.isAlive()
-            # 'alive' is a boolean
-            # 'reponse' can vary: either ICMP latency or IP address (DNS)
 
             send = Notice()
             if alive:
                 logging.info(logStr.format('Target alive. Response:', response))
-                ##trace('Target alive. The response is:', response)
+                # Dead dampening count re-initialising
+                dampeningDead = 0
+                
                 if not wasAlive:
-                #if consecutive >= args.consecutive:
-                    # Resurected (was dead, is now back to life)
-                    wasAlive = True
-                    logging.info('Target resurected!')
-                    send.syslog('Target {} is back to life - {} check'.format(
-                                args.host[0], args.mode))
-                # reinitialise the consecutivity counter
-                consecutive = 0
+                    # Was dead, is now coming back to life. Dampening kicks in.
+                    if (dampeningAlive < args.dampening):
+                        dampeningAlive += 1
+                        logging.info('Dampening in progress')
+                        logging.debug(logStr.format(
+                            'Remaining successes before assuming resurection:',
+                            dampeningAlive))
+                    elif (dampeningAlive == args.dampening):
+                        # The dampening is completed, target considered resurected
+                        wasAlive = True
+                        dampeningAlive = 0
+                        logging.error('Target resurected!')
+                        send.syslog('Target {} is back to life - {} check'.format(
+                                    args.host[0], args.mode))
+                
             else:
-                # Only after consecutives timeouts would a target be considered dead
-                consecutive += 1
-                if wasAlive and (consecutive >= args.consecutive):
+                # Looks like dead. Dampening in progress
+                dampeningDead += 1
+                # Alive dampening count re-initialising
+                dampeningAlive = 0
+
+                if wasAlive and (dampeningDead >= args.dampening):
                     logging.error(logStr.format('Warning:', 'Target is dead'))
                     send.syslog('Target {} is dead - {} check'.format(
                                 args.host[0], args.mode))
-                    # Death tracker. 
+                    # Death tracker
                     wasAlive = False
                 else:
-                    # Either the target is already dead or we haven't reached the
-                    # consecutive count yet; no action.
+                    # Either the target is already dead or Dampening is going on
+                    # Dampening at failure is silent (intuitive enough?)
                     pass
             logging.debug('')
             time.sleep(args.interval)
     except KeyboardInterrupt:
-        print('Interrupted! Exiting...')
-        #break
+        print(' Interrupted! Exiting...')
 
 
 if __name__ == '__main__':
