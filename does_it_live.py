@@ -146,6 +146,9 @@ Logs on the Arista switch:
 Oct 12 08:52:40 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target www.w3.org is dead - dns check
 Oct 12 08:52:50 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target www.w3.org is back to life - dns check
 
+### Example 3 - Python 3
+Try python3 on your host in such fashion:
+python3 does_it_live.py -v -t1 -i1 -m dns -d 1.1.1.1  www.w3.org
 '''
 
 import argparse
