@@ -131,7 +131,7 @@ INFO     Dampening in progress
 INFO     Target alive. Response:     42.607 ms
 INFO     Dampening in progress
 INFO     Target alive. Response:     5.250 ms
-ERROR    Target resurected!      <=== After dampening 3x the target has recovered
+ERROR    Target resurrected!      <=== After dampening 3x the target has recovered
 
 
 ### Example 2 - DNS
@@ -140,7 +140,7 @@ ERROR    Target resurected!      <=== After dampening 3x the target has recovere
 
 [vagrant@localhost scripts]$ ./does_it_live.py -t1 -i1 -m dns -d 1.1.1.1 -s 10.0.2.15 www.w3.org
 ERROR    Warning:                    Target is dead
-ERROR    Target resurected!
+ERROR    Target resurrected!
 
 Logs on the Arista switch:
 Oct 12 08:52:40 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target www.w3.org is dead - dns check
@@ -451,10 +451,10 @@ def main():
                             'Remaining successes before assuming resurection:',
                             dampeningAlive))
                     elif (dampeningAlive == args.dampening):
-                        # The dampening is completed, target considered resurected
+                        # The dampening is completed, target considered resurrected
                         wasAlive = True
                         dampeningAlive = 0
-                        logging.error('Target resurected!')
+                        logging.error('Target resurrected!')
                         send.syslog('Target {} is back to life - {} check'.format(
                                     args.host[0], args.mode))
                 
