@@ -1,0 +1,67 @@
+action-type trapOnly
+
+ip sla monitor logging traps
+
+ip sla monitor 1
+type echo protocol ipIcmpEcho 172.25.58.66
+timeout 1000
+threshold 2
+tag SMA-Financial IpSlaMonitor
+frequency 3
+ip sla monitor schedule 1 life forever start-time now
+
+ip sla monitor 7
+type dns target-addr ns1.google.com. name-server 216.239.32.10 source-ipaddr 172.25.127.7
+timeout 5000
+tag RDB_ns1.google.com_check
+frequency 30
+ip sla monitor schedule 7 life forever start-time now
+
+ip sla monitor 8
+type dns target-addr ns2.google.com. name-server 216.239.34.10 source-ipaddr 172.25.127.7
+tag RDB_ns2.google.com_check
+frequency 30
+ip sla monitor schedule 8 life forever start-time now
+
+ip sla monitor 10
+type dns target-addr ns1.google.com. name-server 216.239.32.10 source-ipaddr 172.25.127.7
+timeout 5000
+tag INX-CSW-01_ns1.google.com_check
+frequency 30
+ip sla monitor reaction-configuration 10 react timeout threshold-type consecutive 3 action-type trapOnly
+ip sla monitor schedule 10 life forever start-time now
+
+ip sla monitor 11
+type dns target-addr ns2.google.com. name-server 216.239.34.10 source-ipaddr 172.25.127.7
+timeout 5000
+tag INX-CSW-01_ns2.google.com_check
+frequency 30
+ip sla monitor reaction-configuration 11 react timeout threshold-type consecutive 3 action-type trapOnly
+ip sla monitor schedule 11 life forever start-time now
+
+ip sla monitor 20
+type echo protocol ipIcmpEcho 172.25.58.66 source-ipaddr 172.25.61.5
+timeout 2000
+threshold 2000
+tag INX-CSW-01_SMA-Financial_check
+frequency 30
+ip sla monitor reaction-configuration 20 react timeout threshold-type consecutive 3 action-type trapOnly
+ip sla monitor schedule 20 life forever start-time now
+
+ip sla monitor 30
+type echo protocol ipIcmpEcho 159.220.110.162 source-ipaddr 172.25.127.7
+timeout 2000
+threshold 2000
+tag INX-CSW-01_Reuters-159.220.110.162_check
+frequency 5
+ip sla monitor reaction-configuration 30 react timeout threshold-type consecutive 3 action-type trapOnly
+ip sla monitor schedule 30 life forever start-time now
+
+ip sla monitor 31
+type echo protocol ipIcmpEcho 159.220.110.178 source-ipaddr 172.25.127.7
+timeout 2000
+threshold 2000
+tag INX-CSW-01_Reuters-159.220.110.178_check
+frequency 5
+ip sla monitor reaction-configuration 31 react timeout threshold-type consecutive 3 action-type trapOnly
+ip sla monitor schedule 31 life forever start-time now

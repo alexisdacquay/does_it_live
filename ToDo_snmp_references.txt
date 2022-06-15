@@ -1,0 +1,9 @@
+http://www.net-snmp.org/tutorial/tutorial-5/commands/snmptrap.html
+https://stackoverflow.com/questions/34654949/sending-snmp-traps-containing-custom-data
+http://snmplabs.com/pysnmp/quick-start.html
+https://www.zenoss.com/sites/default/files/zenoss-doc/9086/base/admin/events/sending-test-traps.html
+
+snmptrap -v 2c -c public localhost '' 1.3.6.1.4.1.2021.991 .1.3.6.1.2.1.1.6 s "Device in Austin"
+
+
+

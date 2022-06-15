@@ -1,0 +1,78 @@
+
+[vagrant@arista scripts]$ ./does_it_live.py -v -t1 -i1  1.1.1.1
+INFO
+INFO     ########### Your settings: ###########
+INFO     Verbose:                    True
+INFO     VeryVerbose:                False
+INFO     Interval:                   1
+INFO     Timeout:                    1
+INFO     Mode:                       icmp
+INFO     Source IP:                  None
+INFO     DNS server:                 None
+INFO     Dampening amount:           3
+INFO     Target Host:                ['1.1.1.1']
+INFO     #######################################
+INFO
+INFO     Target alive. Response:     6.105 ms
+INFO     Target alive. Response:     6.797 ms
+INFO     The ICMP check did not succeed     <=== After a 1st state change, dampening starts counting
+INFO     The ICMP check did not succeed
+INFO     The ICMP check did not succeed     <=== After a count of 3 (if default), dampening ends
+ERROR    Warning:        Target is dead     <=== host declared dead
+INFO     The ICMP check did not succeed     <=== despite other fails, the "Warning" is only logged once
+INFO     Target alive. Response:     7.157 ms
+INFO     Dampening in progress
+INFO     Target alive. Response:     144.862 ms
+INFO     Dampening in progress
+INFO     The ICMP check did not succeed     <=== Dampening prevented recovery after 'only' 2 successes
+INFO     The ICMP check did not succeed
+INFO     The ICMP check did not succeed
+INFO     Target alive. Response:     8.201 ms
+INFO     Dampening in progress
+INFO     Target alive. Response:     5.272 ms
+INFO     Dampening in progress
+INFO     Target alive. Response:     42.607 ms
+INFO     Dampening in progress
+INFO     Target alive. Response:     5.250 ms
+ERROR    Target resurrected!                <=== After dampening 3x the target has recovered
+
+Logs on the Arista switch:
+Oct 12 08:48:29 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target 1.1.1.1 is dead - icmp check
+Oct 12 08:48:49 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target 1.1.1.1 is back to life - icmp check
+
+
+
+./does_it_live.py  [-h] [-v] [-V] [-i <time>] [-t <time>] 
+                    [-m icmp | dns [-d <dns ip>]] [-s <ip add>]
+                    [-D <count>] host
+
+ -v (--verbose) aims at providing basic information to verify the functionality
+                of the script. Someone would typically use this option before
+                Leaving it to run silently
+
+ -V (--veryVerbose) would be used for troubleshooting the software developement
+                or the operation of the script
+
+ -i (--interval) time in seconds between each health check
+
+ -t (--timeout) time in seconds before declaring a single health check as 
+                failed
+
+ -m (--mode)    operating mode of the health check. ICMP and DNS are 
+                supported. If running in ICMP mode, which is the default, then 
+                only the host is required. When using DNS mode, then the DNS 
+                server is additionally required.
+
+ -s (--source)  the source IP address of the IP query can be specified
+
+ -D (--dampening) amount of consecutive checks before switching the target from
+                one state to another, either alive->dead or dead->alive. 
+                The dampening count applies for both direction of change.
+                The default dampening count is 3. In example of a default count 
+                (-D3), if a target is alive and get a single check failure, the 
+                target will not be declared dead yet. It will take
+                3 consecutive checks to fail before switch the target to 
+                'dead'. If after 1 or 2 failures the target becomes responsive 
+                again then the dampening is reset, meaning the 1 or 2 failures 
+                are ignored and 3 entirely new failures will be needed to 
+                change the target status.

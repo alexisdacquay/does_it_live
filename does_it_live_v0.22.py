@@ -12,7 +12,7 @@
 
  # Requirements
 
- This script was developed on Linux and Arista EOS 4.21.
+ This script was developped on Linux and Arista EOS 4.21.
  Both python2 and python3 were tested on Linux
  DNS python is required
 
@@ -28,16 +28,9 @@
  pip install dnspython
 
  ### Offline
- or download the package at http://www.dnspython.org/ 
- For example, at time of writting the latest stable is:
- http://www.dnspython.org/kits/1.15.0/dnspython-1.15.0.tar.gz
- Then decompress the archive:
-!
-bash tar -xvzf  /mnt/flash/scripts/dnspython-1.15.0.tar.gz --directory /mnt/flash/scripts/
-!bash sudo python /mnt/flash/scripts/dnspython-1.15.0/setup.py install
-cd /mnt/flash/scripts/dnspython-1.15.0
-sudo python setup.py install 
-!
+ or download the package at http://www.dnspython.org/ and then 
+ "sudo python setup.py install"
+
 
  ## 3 - Syntax
 
@@ -49,7 +42,7 @@ sudo python setup.py install
                 of the script. Someone would typically use this option before
                 Leaving it to run silently
 
- -V (--veryVerbose) would be used for troubleshooting the software development
+ -V (--veryVerbose) would be used for troubleshooting the software developement
                 or the operation of the script
 
  -i (--interval) time in seconds between each health check
@@ -103,7 +96,7 @@ Oct 12 08:48:29 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target 1.1
 Oct 12 08:48:49 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target 1.1.1.1 is back to life - icmp check
 
 Script output:
-[vagrant@arista scripts]$ ./does_it_live.py -v -t1 -i1  1.1.1.1
+[vagrant@localhost scripts]$ ./does_it_live_v0.22.py -v -t1 -i1  1.1.1.1
 INFO
 INFO     ########### Your settings: ###########
 INFO     Verbose:                    True
@@ -138,7 +131,7 @@ INFO     Dampening in progress
 INFO     Target alive. Response:     42.607 ms
 INFO     Dampening in progress
 INFO     Target alive. Response:     5.250 ms
-ERROR    Target resurrected!      <=== After dampening 3x the target has recovered
+ERROR    Target resurected!      <=== After dampening 3x the target has recovered
 
 
 ### Example 2 - DNS
@@ -147,15 +140,12 @@ ERROR    Target resurrected!      <=== After dampening 3x the target has recover
 
 [vagrant@localhost scripts]$ ./does_it_live.py -t1 -i1 -m dns -d 1.1.1.1 -s 10.0.2.15 www.w3.org
 ERROR    Warning:                    Target is dead
-ERROR    Target resurrected!
+ERROR    Target resurected!
 
 Logs on the Arista switch:
 Oct 12 08:52:40 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target www.w3.org is dead - dns check
 Oct 12 08:52:50 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target www.w3.org is back to life - dns check
 
-### Example 3 - Python 3
-Try python3 on your host in such fashion:
-python3 does_it_live.py -v -t1 -i1 -m dns -d 1.1.1.1  www.w3.org
 '''
 
 import argparse
@@ -175,7 +165,7 @@ import dns.resolver
 # Global configuration settings
 # logStr is a formatting pattern used by str.format() to align outputs
 logStr = '{:27} {}'
-# syslogFormat can be customised to match syslog preferences
+# syslogFormat can be customised to match syslog preference
 syslogFormat = '%DOES_IT_LIVE-5-LOG'
 
 def setLogging(args):
@@ -458,10 +448,10 @@ def main():
                             'Remaining successes before assuming resurection:',
                             dampeningAlive))
                     elif (dampeningAlive == args.dampening):
-                        # The dampening is completed, target considered resurrected
+                        # The dampening is completed, target considered resurected
                         wasAlive = True
                         dampeningAlive = 0
-                        logging.error('Target resurrected!')
+                        logging.error('Target resurected!')
                         send.syslog('Target {} is back to life - {} check'.format(
                                     args.host[0], args.mode))
                 

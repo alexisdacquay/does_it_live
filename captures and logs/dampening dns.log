@@ -1,0 +1,184 @@
+[vagrant@localhost scripts]$ ./does_it_live_v0.22.py -v -t1 -i1 -m dns -d 1.1.1.1 -s 10.0.2.15 www.w3.org
+INFO
+INFO     ########### Your settings: ###########
+INFO     Verbose:                    True
+INFO     VeryVerbose:                False
+INFO     Interval:                   1
+INFO     Timeout:                    1
+INFO     Mode:                       dns
+INFO     Source IP:                  10.0.2.15
+INFO     DNS server:                 1.1.1.1
+INFO     Consecutive times:          3
+INFO     Target Host:                ['www.w3.org']
+INFO     #######################################
+INFO
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+ERROR    Warning:                    Target is dead
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     Target alive. Response:     128.30.52.100
+INFO     Dampening in progress
+INFO     Target alive. Response:     128.30.52.100
+INFO     Dampening in progress
+INFO     The DNS query timed out
+INFO     Target alive. Response:     128.30.52.100
+INFO     Dampening in progress
+INFO     Target alive. Response:     128.30.52.100
+INFO     Dampening in progress
+INFO     Target alive. Response:     128.30.52.100
+INFO     Dampening in progress
+INFO     Target alive. Response:     128.30.52.100
+INFO     Dampening in progress
+ERROR    Target resurected!
+INFO     Target alive. Response:     128.30.52.100
+INFO     Target alive. Response:     128.30.52.100
+INFO     The DNS query timed out
+INFO     Target alive. Response:     128.30.52.100
+INFO     Target alive. Response:     128.30.52.100
+INFO     Target alive. Response:     128.30.52.100
+INFO     Target alive. Response:     128.30.52.100
+INFO     Target alive. Response:     128.30.52.100
+^C Interrupted! Exiting...
+[vagrant@localhost scripts]$
+
+----------
+
+Oct 12 06:45:13 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target www.w3.org is dead - dns check
+Oct 12 06:45:59 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target www.w3.org is back to life - dns check
+
+----------------------
+
+
+
+
+
+[vagrant@localhost scripts]$ ./does_it_live_v0.22.py -v -t1 -i1 -m dns -d 1.1.1.1 -s 10.0.2.15 www.w3.org
+INFO
+INFO     ########### Your settings: ###########
+INFO     Verbose:                    True
+INFO     VeryVerbose:                False
+INFO     Interval:                   1
+INFO     Timeout:                    1
+INFO     Mode:                       dns
+INFO     Source IP:                  10.0.2.15
+INFO     DNS server:                 1.1.1.1
+INFO     dampening amount:           3
+INFO     Target Host:                ['www.w3.org']
+INFO     #######################################
+INFO
+INFO     Target alive. Response:     128.30.52.100
+INFO     Target alive. Response:     128.30.52.100
+INFO     Target alive. Response:     128.30.52.100
+INFO     Target alive. Response:     128.30.52.100
+INFO     Target alive. Response:     128.30.52.100
+INFO     Target alive. Response:     128.30.52.100
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+ERROR    Warning:                    Target is dead
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     Target alive. Response:     128.30.52.100
+INFO     Dampening in progress
+INFO     Target alive. Response:     128.30.52.100
+INFO     Dampening in progress                      <--- Notice the target hadn't bee resurected at dampening didn't resolve
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     The DNS query timed out
+INFO     Target alive. Response:     128.30.52.100
+INFO     Dampening in progress
+INFO     Target alive. Response:     128.30.52.100
+INFO     Dampening in progress
+INFO     Target alive. Response:     128.30.52.100
+INFO     Dampening in progress
+INFO     Target alive. Response:     128.30.52.100
+ERROR    Target resurected!                         <--- Dampening completec, target resurected
+INFO     Target alive. Response:     128.30.52.100
+INFO     Target alive. Response:     128.30.52.100
+INFO     Target alive. Response:     128.30.52.100
+INFO     Target alive. Response:     128.30.52.100
+INFO     Target alive. Response:     128.30.52.100
+^C Interrupted! Exiting...
+[vagrant@localhost scripts]$
+
+---------------------------- ICMP -------------------------
+
+[vagrant@localhost scripts]$ ./does_it_live_v0.22.py -v -t1 -i1  1.1.1.1
+INFO
+INFO     ########### Your settings: ###########
+INFO     Verbose:                    True
+INFO     VeryVerbose:                False
+INFO     Interval:                   1
+INFO     Timeout:                    1
+INFO     Mode:                       icmp
+INFO     Source IP:                  None
+INFO     DNS server:                 None
+INFO     dampening amount:           3
+INFO     Target Host:                ['1.1.1.1']
+INFO     #######################################
+INFO
+INFO     Target alive. Response:     7.451 ms
+INFO     Target alive. Response:     5.426 ms
+INFO     Target alive. Response:     5.356 ms
+INFO     Target alive. Response:     6.328 ms
+INFO     Target alive. Response:     5.196 ms
+INFO     Target alive. Response:     6.062 ms
+INFO     The ICMP check did not succeed
+INFO     The ICMP check did not succeed
+INFO     The ICMP check did not succeed
+ERROR    Warning:                    Target is dead
+INFO     The ICMP check did not succeed
+INFO     The ICMP check did not succeed
+INFO     Target alive. Response:     5.487 ms
+INFO     Dampening in progress
+INFO     Target alive. Response:     166.104 ms
+INFO     Dampening in progress
+INFO     The ICMP check did not succeed
+INFO     The ICMP check did not succeed
+INFO     The ICMP check did not succeed
+INFO     The ICMP check did not succeed
+INFO     The ICMP check did not succeed
+INFO     The ICMP check did not succeed
+INFO     The ICMP check did not succeed
+INFO     Target alive. Response:     7.683 ms
+INFO     Dampening in progress
+INFO     Target alive. Response:     6.711 ms
+INFO     Dampening in progress
+INFO     Target alive. Response:     7.077 ms
+INFO     Dampening in progress
+INFO     Target alive. Response:     4.696 ms
+ERROR    Target resurected!
+INFO     Target alive. Response:     5.281 ms
+INFO     Target alive. Response:     5.072 ms
+INFO     Target alive. Response:     7.209 ms
+INFO     Target alive. Response:     5.887 ms
+INFO     Target alive. Response:     6.131 ms
+INFO     Target alive. Response:     6.322 ms
+^C Interrupted! Exiting...
+[vagrant@localhost scripts]$
+
+Log Buffer:
+Oct 12 07:51:31 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target 1.1.1.1 is dead - icmp check
+Oct 12 07:51:47 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target 1.1.1.1 is back to life - icmp check
+localhost#

@@ -1,0 +1,140 @@
+# Introduction #
+ 
+ This script verifies the reachability to a target by ICMP or DNS
+ The script is intended to be installed on a switch (or host).
+
+ # Requirements
+
+ This script was developped on Linux and Arista EOS 4.21.
+ Both python2 and python3 were tested on Linux
+ DNS python is required
+
+
+ # Instructions #
+
+ ## 1 - Get the script on the host
+ https://github.com/alexisdacquay/does_it_live
+
+ ## 2 - Instal DNSPython
+ ### Online
+ If the switch/host has got a public access:
+ pip install dnspython
+
+ ### Offline
+ or download the package at http://www.dnspython.org/ and then 
+ "sudo python setup.py install"
+
+
+ ## 3 - Syntax
+
+ ./does_it_live.py  [-h] [-v] [-V] [-i <time>] [-t <time>] 
+                    [-m icmp | dns [-d <dns ip>]] [-s <ip add>]
+                    [-D <count>] host
+
+ -v (--verbose) aims at providing basic information to verify the functionality
+                of the script. Someone would typically use this option before
+                Leaving it to run silently
+
+ -V (--veryVerbose) would be used for troubleshooting the software developement
+                or the operation of the script
+
+ -i (--interval) time in seconds between each health check
+
+ -t (--timeout) time in seconds before declaring a single health check as 
+                failed
+
+ -m (--mode)    operating mode of the health check. ICMP and DNS are 
+                supported. If running in ICMP mode, which is the default, then 
+                only the host is required. When using DNS mode, then the DNS 
+                server is additionally required.
+
+ -s (--source)  the source IP address of the IP query can be specified
+
+ -D (--dampening) amount of consecutive checks before switching the target from
+                one state to another, either alive->dead or dead->alive. 
+                The dampening count applies for both direction of change.
+                The default dampening count is 3. In example of a default count 
+                (-D3), if a target is alive and get a single check failure, the 
+                target will not be declared dead yet. It will take
+                3 consecutive checks to fail before switch the target to 
+                'dead'. If after 1 or 2 failures the target becomes responsive 
+                again then the dampening is reset, meaning the 1 or 2 failures 
+                are ignored and 3 entirely new failures will be needed to 
+                change the target status.
+
+
+Dampening example - target is considered still alive:
+    Success Success Fail Success Fail Fail Success
+                                                 ^ 
+                                                 Never 'died' yet
+
+Dampening example - target becomes considered as dead:
+    Success Fail Fail Fail Success Fail Success Success Fail
+                          ^                                 ^
+                          Declared dead                      Still dead
+                
+Dampening example - target recovers from dead to alive (resurects):
+    Success Fail Fail Fail Success Fail Success Success Success
+                                                              ^ target is back alive 
+
+
+ ## 4 - Usage examples:
+
+ ### Example 1 - ICMP
+ The following tries an ICMP reach to 8.8.8.8 every seconds and shows basic ouput
+ ./does_it_live.py -v -t 1 -i 1 8.8.8.8
+
+Logs on the Arista switch:
+Oct 12 08:48:29 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target 1.1.1.1 is dead - icmp check
+Oct 12 08:48:49 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target 1.1.1.1 is back to life - icmp check
+
+Script output:
+[vagrant@localhost scripts]$ ./does_it_live_v0.22.py -v -t1 -i1  1.1.1.1
+INFO
+INFO     ########### Your settings: ###########
+INFO     Verbose:                    True
+INFO     VeryVerbose:                False
+INFO     Interval:                   1
+INFO     Timeout:                    1
+INFO     Mode:                       icmp
+INFO     Source IP:                  None
+INFO     DNS server:                 None
+INFO     Dampening amount:           3
+INFO     Target Host:                ['1.1.1.1']
+INFO     #######################################
+INFO
+INFO     Target alive. Response:     6.105 ms
+INFO     Target alive. Response:     6.797 ms
+INFO     The ICMP check did not succeed
+INFO     The ICMP check did not succeed
+INFO     The ICMP check did not succeed
+ERROR    Warning:                    Target is dead    <=== host reclared dead
+INFO     The ICMP check did not succeed
+INFO     Target alive. Response:     7.157 ms
+INFO     Dampening in progress
+INFO     Target alive. Response:     144.862 ms
+INFO     Dampening in progress
+INFO     The ICMP check did not succeed  <=== Dampening prevented recovery
+INFO     The ICMP check did not succeed
+INFO     The ICMP check did not succeed
+INFO     Target alive. Response:     8.201 ms
+INFO     Dampening in progress
+INFO     Target alive. Response:     5.272 ms
+INFO     Dampening in progress
+INFO     Target alive. Response:     42.607 ms
+INFO     Dampening in progress
+INFO     Target alive. Response:     5.250 ms
+ERROR    Target resurected!      <=== After dampening 3x the target has recovered
+
+
+### Example 2 - DNS
+
+ The following tests resolving www.bbc.co.uk agains the DNS server 1.1.1.1
+
+[vagrant@localhost scripts]$ ./does_it_live.py -t1 -i1 -m dns -d 1.1.1.1 -s 10.0.2.15 www.w3.org
+ERROR    Warning:                    Target is dead
+ERROR    Target resurected!
+
+Logs on the Arista switch:
+Oct 12 08:52:40 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target www.w3.org is dead - dns check
+Oct 12 08:52:50 localhost does_it_live: %DOES_IT_LIVE-5-LOG: Log msg: Target www.w3.org is back to life - dns check

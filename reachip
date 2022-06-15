@@ -1,0 +1,12 @@
+#!/bin/sh
+if [ $1 ]; then
+    while read ip; do
+        if [ $ip ]; then
+            echo -ne "Pinging $ip...\t"
+            ping -c2 -i0.2 -w1 "$ip" &>/dev/null && echo Success || echo Fail !!
+        fi
+    done < $1
+else
+    echo "ERROR! - missing FILENAME"
+    echo "Usage: reachip <FILENAME>"
+fi
